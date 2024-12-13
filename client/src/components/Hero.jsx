@@ -11,9 +11,9 @@ const Hero = () => {
           Our Responsibility
         </h1>
         <p>
-          Lorem, ipsum dolor sit amet consectetur adipisicing elit. Quibusdam
-          tenetur doloremque molestias repellat minus asperiores in aperiam
-          dolor, quaerat praesentium.
+        Manage appointments, access your medical records, and consult online all in one place.
+        Simplify your healthcare experience with fast, reliable, and secure solutions.
+        Your health is our priority, anytime, anywhere.
         </p>
       </div>
       <div className="hero-img">

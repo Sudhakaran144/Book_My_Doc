@@ -15,13 +15,11 @@ const AboutUs = () => {
           </div>
           <div className="hero-content">
             <p>
-              Lorem, ipsum dolor sit amet consectetur adipisicing elit.
-              Quibusdam tenetur doloremque molestias repellat minus asperiores
-              in aperiam dolor, quaerat praesentium. Lorem ipsum dolor sit amet
-              consectetur adipisicing elit. Voluptatibus, repudiandae! Lorem
-              ipsum dolor sit amet consectetur adipisicing elit. Provident
-              quibusdam doloremque ex? Officia atque ab dolore? Tempore totam
-              non ea!
+            At BookMyDoc, we believe that healthcare should be simple, accessible, and stress-free. Our mission is to bridge the gap between patients and healthcare providers by creating a platform that empowers you to take control of your health with ease.
+
+            With our app, you can find and book appointments with trusted doctors, manage your medical records securely, and even consult online from the comfort of your home. Designed with cutting-edge technology and user convenience in mind, BookMyDoc is committed to delivering a seamless healthcare experience for everyone.
+
+             
             </p>
           </div>
         </div>
