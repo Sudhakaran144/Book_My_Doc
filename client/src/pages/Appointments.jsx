@@ -25,7 +25,9 @@ const Appointments = () => {
       );
       setAppointments(temp);
       dispatch(setLoading(false));
-    } catch (error) {}
+    } catch (error) {
+      console.error(error);
+    }
   };
 
   useEffect(() => {
