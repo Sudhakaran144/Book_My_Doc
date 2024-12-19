@@ -1,14 +1,12 @@
 import React, { useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { sendMessage, resetChat } from "../redux/reducers/ChatbotSlice.js";
-import "../styles/chatbot.css";
-import jwt_decode from "jwt-decode";
+import "../styles/chatbot.css"; 
 
 const Chatbot = () => {
   const [isOpen, setIsOpen] = useState(false); // To toggle chatbot visibility
   const [input, setInput] = useState("");
   const dispatch = useDispatch();
-  const { userId } = jwt_decode(localStorage.getItem("token"));
   const { messages, loading, error } = useSelector((state) => state.chatbot);
 
   const handleSend = () => {
