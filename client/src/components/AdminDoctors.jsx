@@ -53,7 +53,7 @@ const AdminDoctors = () => {
 
   useEffect(() => {
     getAllDoctors();
-  }, []);
+  }, [getAllDoctors]);
 
   return (
     <>
