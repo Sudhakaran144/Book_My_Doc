@@ -26,7 +26,7 @@ const AdminAppointments = () => {
 
   useEffect(() => {
     getAllAppoint();
-  }, []);
+  }, [getAllAppoint]);
 
   const complete = async (ele) => {
     try {
