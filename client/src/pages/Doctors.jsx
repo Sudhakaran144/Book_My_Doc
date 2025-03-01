@@ -23,7 +23,7 @@ const Doctors = () => {
 
   useEffect(() => {
     fetchAllDocs();
-  }, [fetchAllDocs]);
+  }, []);
 
   return (
     <>
