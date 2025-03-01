@@ -25,7 +25,7 @@ const Notifications = () => {
 
   useEffect(() => {
     getAllNotif();
-  }, [getAllNotif]);
+  }, []);
 
   return (
     <>
