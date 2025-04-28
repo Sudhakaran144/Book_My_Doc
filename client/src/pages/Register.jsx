@@ -65,8 +65,7 @@ function Register() {
         return toast.error("Password must be at least 5 characters long");
       } else if (password !== confpassword) {
         return toast.error("Passwords do not match");
-      }
-
+      } 
       await toast.promise(
         axios.post("/user/register", {
           firstname,

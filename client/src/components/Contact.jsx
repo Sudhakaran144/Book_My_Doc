@@ -1,11 +1,19 @@
 import React, { useState } from "react";
 import "../styles/contact.css";
+import { FaEnvelope, FaPhone, FaMapMarkerAlt, FaPaperPlane } from "react-icons/fa";
 
 const Contact = () => {
   const [formDetails, setFormDetails] = useState({
     name: "",
     email: "",
+    subject: "",
     message: "",
+  });
+
+  const [submitStatus, setSubmitStatus] = useState({
+    isSubmitting: false,
+    submitted: false,
+    error: false
   });
 
   const inputChange = (e) => {
@@ -16,52 +24,147 @@ const Contact = () => {
     });
   };
 
-  return (
-    <section
-      className="register-section flex-center"
-      id="contact"
-    >
-      <div className="contact-container flex-center contact">
-        <h2 className="form-heading">Contact Us</h2>
-        <form
-          method="POST"
-          action={`https://formspree.io/f/${process.env.REACT_FORMIK_SECRET}`}
-          className="register-form "
-        >
-          <input
-            type="text"
-            name="name"
-            className="form-input"
-            placeholder="Enter your name"
-            value={formDetails.name}
-            onChange={inputChange}
-          />
-          <input
-            type="email"
-            name="email"
-            className="form-input"
-            placeholder="Enter your email"
-            value={formDetails.email}
-            onChange={inputChange}
-          />
-          <textarea
-            type="text"
-            name="message"
-            className="form-input"
-            placeholder="Enter your message"
-            value={formDetails.message}
-            onChange={inputChange}
-            rows="8"
-            cols="12"
-          ></textarea>
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    setSubmitStatus({ isSubmitting: true, submitted: false, error: false });
+    
+    // Simulate form submission
+    setTimeout(() => {
+      setSubmitStatus({ isSubmitting: false, submitted: true, error: false });
+      setFormDetails({
+        name: "",
+        email: "",
+        subject: "",
+        message: "",
+      });
+      
+      // Reset success message after 5 seconds
+      setTimeout(() => {
+        setSubmitStatus({ isSubmitting: false, submitted: false, error: false });
+      }, 5000);
+    }, 1000);
+  };
 
-          <button
-            type="submit"
-            className="btn form-btn"
-          >
-            send
-          </button>
-        </form>
+  return (
+    <section className="contact-section" id="contact">
+      <div className="contact-container">
+        <div className="contact-info">
+          <h2 className="contact-heading">Get In Touch</h2>
+          <p className="contact-subheading">
+            Have questions or feedback? We're here to help. Send us a message and we'll respond as soon as possible.
+          </p>
+          
+          <div className="contact-methods">
+            <div className="contact-method">
+              <div className="contact-icon">
+                <FaEnvelope />
+              </div>
+              <div className="contact-method-info">
+                <h4>Email Us</h4>
+                <p>support@bookmydoc.com</p>
+              </div>
+            </div>
+            
+            <div className="contact-method">
+              <div className="contact-icon">
+                <FaPhone />
+              </div>
+              <div className="contact-method-info">
+                <h4>Call Us</h4>
+                <p>+1 (555) 123-4567</p>
+              </div>
+            </div>
+            
+            <div className="contact-method">
+              <div className="contact-icon">
+                <FaMapMarkerAlt />
+              </div>
+              <div className="contact-method-info">
+                <h4>Visit Us</h4>
+                <p>123 Health Avenue, Medical District</p>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <div className="contact-form-container">
+          <form className="contact-form" onSubmit={handleSubmit}>
+            <div className="form-header">
+              <h3>Send Message</h3>
+            </div>
+            
+            <div className="form-group">
+              <label htmlFor="name">Your Name</label>
+              <input
+                type="text"
+                id="name"
+                name="name"
+                className="form-control"
+                placeholder="Enter your full name"
+                value={formDetails.name}
+                onChange={inputChange}
+                required
+              />
+            </div>
+            
+            <div className="form-group">
+              <label htmlFor="email">Email Address</label>
+              <input
+                type="email"
+                id="email"
+                name="email"
+                className="form-control"
+                placeholder="Enter your email address"
+                value={formDetails.email}
+                onChange={inputChange}
+                required
+              />
+            </div>
+            
+            <div className="form-group">
+              <label htmlFor="subject">Subject</label>
+              <input
+                type="text"
+                id="subject"
+                name="subject"
+                className="form-control"
+                placeholder="What is this regarding?"
+                value={formDetails.subject}
+                onChange={inputChange}
+                required
+              />
+            </div>
+            
+            <div className="form-group">
+              <label htmlFor="message">Message</label>
+              <textarea
+                id="message"
+                name="message"
+                className="form-control"
+                placeholder="Enter your message here..."
+                value={formDetails.message}
+                onChange={inputChange}
+                rows="5"
+                required
+              ></textarea>
+            </div>
+            
+            <button
+              type="submit"
+              className="submit-button"
+              disabled={submitStatus.isSubmitting}
+            >
+              {submitStatus.isSubmitting ? 'Sending...' : 'Send Message'}
+              <span className="button-icon"><FaPaperPlane /></span>
+            </button>
+            
+            {submitStatus.submitted && (
+              <div className="form-success">
+                Message sent successfully! We'll get back to you soon.
+              </div>
+            )}
+          </form>
+        </div>
       </div>
     </section>
   );

@@ -1,309 +1,286 @@
 const express = require("express");
 const { GoogleGenerativeAI } = require("@google/generative-ai");
-const Appointment = require("../models/appointmentModel"); // Placeholder for Appointment schema
-const Doctor = require("../models/doctorModel"); // Placeholder for Doctor schema
-const user =  require('../models/userModel')
-const Notification = require("../models/notificationModel")
-require("dotenv").config();
+const multer = require("multer");
+const fs = require("fs");
+const path = require("path");
+const Tesseract = require("tesseract.js");
+const Doctor = require("../models/doctorModel");
+const Appointment = require("../models/appointmentModel");
+const Notification = require("../models/notificationModel");
+const User = require("../models/userModel");
 
 const router = express.Router();
- 
+const upload = multer({ dest: "uploads/" });
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-
-// Configure the model
 const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
-// Route for Doctor Info
+// Doctor Information
 router.post("/doctor-info", async (req, res) => {
-  const { doctorName } = req.body;
-
-  if (!doctorName) {
-    return res.status(400).json({ error: "Please provide a doctor name." });
-  }
+  const { doctorName, language } = req.body;
 
   try {
-    const userDoc = await user.findOne({ firstname: doctorName }); 
-
-    console.log(userDoc)
+    const userDoc = await User.findOne({ 
+      $or: [
+        { firstname: { $regex: new RegExp(doctorName, "i") } },
+        { lastname: { $regex: new RegExp(doctorName, "i") } }
+      ],
+      role: "doctor"
+    });
 
     if (!userDoc) {
-      return res.status(404).json({ error: `No user found with name ${doctorName}.` });
+      return res.json({ 
+        reply: language === "hi" ? 
+          `डॉक्टर ${doctorName} हमारे सिस्टम में उपलब्ध नहीं हैं।` :
+          `Dr. ${doctorName} is not available in our system.`
+      });
     }
-  
+
     const doctorInfo = await Doctor.findOne({ userId: userDoc._id });
 
-    console.log(doctorInfo) 
-
     if (doctorInfo) {
-      const responseMessage = `
-        Dr. ${userDoc.firstname} specializes in ${doctorInfo.specialization}. 
-        Consultation fees: $${doctorInfo.fees}. 
-        Experience: ${doctorInfo.experience} years.
-      `;
+      let responseMessage;
+      if (language === "hi") {
+        responseMessage = `
+          डॉ. ${userDoc.firstname} ${userDoc.lastname} ${doctorInfo.specialization} में विशेषज्ञ हैं।
+          परामर्श शुल्क: ₹${doctorInfo.fees}।
+          अनुभव: ${doctorInfo.experience} वर्ष।
+          ${doctorInfo.bio ? `विवरण: ${doctorInfo.bio}` : ''}
+        `;
+      } else {
+        responseMessage = `
+          Dr. ${userDoc.firstname} ${userDoc.lastname} specializes in ${doctorInfo.specialization}.
+          Consultation fees: $${doctorInfo.fees}.
+          Experience: ${doctorInfo.experience} years.
+          ${doctorInfo.bio ? `About: ${doctorInfo.bio}` : ''}
+        `;
+      }
       res.json({ reply: responseMessage });
     } else {
-      res.json({ reply: `I'm sorry, I couldn't find any information about Dr. ${doctorName}.` });
+      res.json({ 
+        reply: language === "hi" ?
+          `डॉ. ${doctorName} के बारे में जानकारी उपलब्ध नहीं है।` :
+          `No information found for Dr. ${doctorName}.`
+      });
     }
   } catch (error) {
     console.error("Error fetching doctor info:", error);
-    res.status(500).json({ error: "Error fetching doctor information" });
+    res.status(500).json({ 
+      error: "Error fetching doctor information",
+      reply: "Sorry, I encountered an error while fetching doctor information."
+    });
   }
 });
 
- 
-// Route for Booking Appointment
+// Book Appointment
 router.post("/booking", async (req, res) => {
-  const { doctorName, date, time, patientName } = req.body;
-
-  if (!doctorName || !date || !time || !patientName) {
-    return res.status(400).json({ error: "Please provide doctor name, date, and time." });
-  }
+  const { doctorName, date, time, patientName, language } = req.body;
 
   try {
-    // Fetch user info based on doctor's name (find doctor)
-    const userDoc = await user.findOne({ firstname: doctorName });
+    const userDoc = await User.findOne({ 
+      $or: [
+        { firstname: { $regex: new RegExp(doctorName, "i") } },
+        { lastname: { $regex: new RegExp(doctorName, "i") } }
+      ],
+      role: "doctor"
+    });
 
     if (!userDoc) {
-      return res.json({ reply: `Dr. ${doctorName} is not available in our system.` });
+      return res.json({ 
+        reply: language === "hi" ?
+          `डॉक्टर ${doctorName} हमारे सिस्टम में उपलब्ध नहीं हैं।` :
+          `Dr. ${doctorName} is not available in our system.`
+      });
     }
 
-    // Find the associated doctor info
-    const doctorInfo = await Doctor.findOne({ userId: userDoc._id });
-
-    if (!doctorInfo) {
-      return res.json({ reply: `No information found for Dr. ${doctorName}.` });
-    }
-
-    // Save the appointment, just like in the appointmentController
     const appointment = new Appointment({
-      date: date,
-      time: time,
-      doctorId: userDoc._id,   
-      userId: patientName, 
-      status: "Pending",           
+      date,
+      time,
+      doctorId: userDoc._id,
+      userId: patientName,
+      status: "Pending",
     });
 
-    // Create notifications for both user and doctor
-    const userNotification = new Notification({
+    // Create notifications
+    const patientNotification = new Notification({
       userId: patientName,
-      content: `You have successfully booked an appointment with Dr. ${userDoc.firstname } ${userDoc.lastname} for ${date} at ${time}.`,
+      content: language === "hi" ?
+        `आपने डॉ. ${userDoc.firstname} ${userDoc.lastname} के साथ ${date} को ${time} बजे अपॉइंटमेंट बुक कर लिया है।` :
+        `You have booked an appointment with Dr. ${userDoc.firstname} ${userDoc.lastname} on ${date} at ${time}.`
     });
-    await userNotification.save();
 
     const doctorNotification = new Notification({
       userId: userDoc._id,
-      content: `You have an appointment with ${patientName} on ${date} at ${time}.`,
+      content: language === "hi" ?
+        `${patientName} ने ${date} को ${time} बजे आपके साथ अपॉइंटमेंट बुक किया है।` :
+        `You have an appointment with ${patientName} on ${date} at ${time}.`
     });
-    await doctorNotification.save();
 
-    // Save the appointment to the database
-    await appointment.save();
+    await Promise.all([
+      appointment.save(),
+      patientNotification.save(),
+      doctorNotification.save()
+    ]);
 
-    // Respond with a success message
-    const responseMessage = `Your appointment with Dr. ${doctorName} on ${date} at ${time} has been successfully booked!`;
-    res.json({ reply: responseMessage,appointmentDetails: appointment, });
+    const responseMessage = language === "hi" ?
+      `डॉ. ${userDoc.firstname} ${userDoc.lastname} के साथ ${date} को ${time} बजे आपकी अपॉइंटमेंट सफलतापूर्वक बुक हो गई है!` :
+      `Your appointment with Dr. ${userDoc.firstname} ${userDoc.lastname} on ${date} at ${time} has been successfully booked!`;
+
+    res.json({ reply: responseMessage });
   } catch (error) {
     console.error("Error booking appointment:", error);
-    res.status(500).json({ error: "Error booking appointment" });
+    res.status(500).json({ 
+      error: "Error booking appointment",
+      reply: "Sorry, I encountered an error while booking your appointment."
+    });
   }
 });
 
-
-
- 
-
-// Use the correct method to generate text
- 
-router.post("/symptom", async (req, res) => {
-  const { symptoms } = req.body;
-
-  if (!symptoms || symptoms.trim().length === 0) {
-    return res.status(400).json({ error: "Please provide symptoms to analyze." });
-  }
+// Prescription Text Explanation
+router.post("/prescription", async (req, res) => {
+  const { text, language } = req.body;
 
   try {
-    // Symptom-to-Specialization Mapping
-    
-    const symptomToSpecialization = {
-  // General Symptoms
-  headache: "Neurologist",
-  fever: "General Practitioner",
-  fatigue: "Endocrinologist",
-  dizziness: "Neurologist",
-  weakness: "General Practitioner",
-  weightLoss: "Endocrinologist",
-
-  // Respiratory Symptoms
-  cough: "Pulmonologist",
-  flu: "General Practitioner",
-  cold: "General Practitioner",
-  "shortness of breath": "Pulmonologist",
-  wheezing: "Pulmonologist",
-  asthma: "Pulmonologist",
-  "chest congestion": "Pulmonologist",
-
-  // Cardiac Symptoms
-  "chest pain": "Cardiologist",
-  "irregular heartbeat": "Cardiologist",
-  hypertension: "Cardiologist",
-  "shortness of breath with exertion": "Cardiologist",
-
-  // Gastrointestinal Symptoms
-  "stomach ache": "Gastroenterologist",
-  "acid reflux": "Gastroenterologist",
-  diarrhea: "Gastroenterologist",
-  constipation: "Gastroenterologist",
-  nausea: "Gastroenterologist",
-  vomiting: "Gastroenterologist",
-  "blood in stool": "Gastroenterologist",
-  bloating: "Gastroenterologist",
-  jaundice: "Hepatologist",
-
-  // ENT Symptoms
-  "sore throat": "ENT Specialist",
-  "ear pain": "ENT Specialist",
-  "hearing loss": "ENT Specialist",
-  tinnitus: "ENT Specialist",
-  "nasal congestion": "ENT Specialist",
-  "loss of smell": "ENT Specialist",
-  sinusitis: "ENT Specialist",
-
-  // Neurological Symptoms
-  migraine: "Neurologist",
-  "blurred vision": "Neurologist",
-  "tingling sensation": "Neurologist",
-  "numbness in limbs": "Neurologist",
-  seizures: "Neurologist",
-  "memory loss": "Neurologist",
-
-  // Skin Symptoms
-  rash: "Dermatologist",
-  itching: "Dermatologist",
-  acne: "Dermatologist",
-  eczema: "Dermatologist",
-  psoriasis: "Dermatologist",
-  "skin discoloration": "Dermatologist",
-  "hair loss": "Dermatologist",
-
-  // Musculoskeletal Symptoms
-  "joint pain": "Orthopedist",
-  "back pain": "Orthopedist",
-  "muscle cramps": "Orthopedist",
-  "bone fracture": "Orthopedist",
-  "stiffness in joints": "Rheumatologist",
-  arthritis: "Rheumatologist",
-
-  // Endocrine Symptoms
-  "excessive thirst": "Endocrinologist",
-  "frequent urination": "Endocrinologist",
-  "unexplained weight gain": "Endocrinologist",
-  "hair thinning": "Endocrinologist",
-
-  // Psychological Symptoms
-  anxiety: "Psychiatrist",
-  depression: "Psychiatrist",
-  insomnia: "Psychiatrist",
-  "mood swings": "Psychiatrist",
-  "behavioral changes": "Psychiatrist",
-
-  // Pediatric Symptoms
-  "delayed growth": "Pediatrician",
-  "frequent infections": "Pediatrician",
-  colic: "Pediatrician",
-  "bedwetting": "Pediatrician",
-
-  // Gynecological Symptoms
-  "menstrual irregularities": "Gynecologist",
-  "pelvic pain": "Gynecologist",
-  "abnormal vaginal discharge": "Gynecologist",
-  "breast lump": "Gynecologist",
-
-  // Urological Symptoms
-  "painful urination": "Urologist",
-  "blood in urine": "Urologist",
-  "urinary incontinence": "Urologist",
-  "kidney stones": "Urologist",
-  "prostate issues": "Urologist",
-
-  // Ophthalmological Symptoms
-  "blurred vision": "Ophthalmologist",
-  "red eyes": "Ophthalmologist",
-  "eye pain": "Ophthalmologist",
-  cataracts: "Ophthalmologist",
-  "vision loss": "Ophthalmologist",
-};
-
-
-    // Prepare the prompt for AI
     const prompt = `
-      You are a healthcare assistant. Based on the symptoms provided, suggest the likely condition in 2-3 sentences. 
-      Symptoms: ${symptoms}
+      Explain this prescription in ${language} using simple terms:
+      ${text}
+      
+      Include:
+      1. Medication purpose in 1 sentence
+      2. Dosage instructions clearly
+      3. Potential side effects to watch for
+      4. Important warnings
+      
+      Use bullet points and keep under 300 words.
+      Format the response in markdown with bold headings for each section.
+      Respond in ${language}.
     `;
 
-    // Generate content using the AI model
     const result = await model.generateContent([prompt]);
-
-    if (result && result.response && result.response.candidates) {
-      // Access the first candidate's content text
-      const candidate = result.response.candidates[0];
-      const advice = candidate.content?.parts[0]?.text?.trim(); // Adjusted path
-
-      if (!advice) {
-        return res.status(500).json({ error: "No valid advice generated by the AI model." });
-      }
-
-      // Extract relevant specializations based on symptoms
-      const extractedSpecializations = Object.keys(symptomToSpecialization)
-        .filter((symptom) => symptoms.toLowerCase().includes(symptom))
-        .map((symptom) => symptomToSpecialization[symptom]);
-
-      console.log("Extracted Specializations:", extractedSpecializations);
-
-      let doctorSuggestions = "No matching doctors found in our database.";
-
-      if (extractedSpecializations.length > 0) {
-        // Query matching doctors from the database
-        const matchingDoctors = await Doctor.find({
-          specialization: { $in: extractedSpecializations },
-        });
-
-        console.log("Matching Doctors:", matchingDoctors);
-
-        if (matchingDoctors.length > 0) {
-          // Map over the matching doctors and fetch user info
-          const doctorSuggestionsList = await Promise.all(
-            matchingDoctors.map(async (doctor) => {
-              const userInfo = await user.findOne({ _id: doctor.userId });
-
-              // Ensure we return the formatted doctor string
-              return `Dr. ${userInfo.firstname} ${userInfo.lastname} (${doctor.specialization})`;
-            })
-          );
-
-          // Join all doctor suggestions into a string
-          doctorSuggestions = doctorSuggestionsList.join(", ");
-        }
-      }
-
-      // Respond with advice and suggested doctors
-      res.json({
-        advice: advice,
-        suggestedDoctors: doctorSuggestions,
-      });
-    } else {
-      res.status(500).json({ error: "No valid response from AI." });
-    }
+    const explanation = result.response.candidates[0].content.parts[0].text;
+    
+    res.json({ explanation });
   } catch (error) {
-    console.error("Error with symptom checker:", error);
-    res.status(500).json({ error: "Error analyzing symptoms" });
+    console.error("Prescription explanation error:", error);
+    res.status(500).json({ 
+      error: "Error explaining prescription",
+      explanation: language === "hi" ?
+        "मुझे इस प्रिस्क्रिप्शन को समझाने में समस्या आई। कृपया पुनः प्रयास करें।" :
+        "I had trouble explaining this prescription. Please try again."
+    });
   }
 });
 
+// Prescription Image OCR and Explanation
+router.post("/ocr-prescription", upload.single("prescription"), async (req, res) => {
+  const { language } = req.body;
+  const filePath = req.file.path;
 
+  try {
+    // OCR Processing
+    const { data: { text } } = await Tesseract.recognize(
+      filePath,
+      language === "hi" ? "hin" : "eng",
+      { logger: m => console.log(m) }
+    );
 
+    // Clean up the uploaded file
+    fs.unlinkSync(filePath);
 
+    // AI Explanation
+    const prompt = `
+      Explain this OCR-extracted prescription in ${language}:
+      ${text}
+      
+      Provide:
+      1. Medication names and purposes
+      2. Clear dosage instructions
+      3. Potential side effects
+      4. Important warnings
+      
+      Format in markdown with bullet points.
+      Keep the explanation simple and under 250 words.
+      Respond in ${language}.
+    `;
 
+    const result = await model.generateContent([prompt]);
+    const explanation = result.response.candidates[0].content.parts[0].text;
+    
+    res.json({ explanation });
+  } catch (error) {
+    console.error("OCR prescription error:", error);
+    if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+    res.status(500).json({ 
+      error: "Error processing prescription",
+      explanation: language === "hi" ?
+        "प्रिस्क्रिप्शन प्रोसेस करने में त्रुटि हुई। कृपया पुनः प्रयास करें।" :
+        "Error processing prescription. Please try again."
+    });
+  }
+});
 
+// Symptom Checker
+router.post("/symptom", async (req, res) => {
+  const { symptoms, language } = req.body;
+  
+  try {
+    const prompt = `
+      Analyze these symptoms in ${language}:
+      ${symptoms}
+      
+      Provide:
+      1. Possible conditions (list 2-3 most likely)
+      2. Recommended next steps
+      3. When to seek urgent care
+      4. General advice
+      
+      Format in markdown with clear headings.
+      Keep response under 300 words and in ${language}.
+    `;
 
+    const result = await model.generateContent([prompt]);
+    const advice = result.response.candidates[0].content.parts[0].text;
+    
+    // Doctor recommendation logic
+    const symptomToSpecialization = {
+      headache: "Neurologist",
+      fever: "General Practitioner",
+      cough: "Pulmonologist",
+      "chest pain": "Cardiologist",
+      "stomach ache": "Gastroenterologist",
+      // Add more mappings as needed
+    };
+
+    const extractedSpecializations = Object.keys(symptomToSpecialization)
+      .filter(symptom => symptoms.toLowerCase().includes(symptom))
+      .map(symptom => symptomToSpecialization[symptom]);
+
+    let suggestedDoctors = [];
+    if (extractedSpecializations.length > 0) {
+      const doctors = await Doctor.find({
+        specialization: { $in: extractedSpecializations }
+      }).limit(3);
+
+      suggestedDoctors = await Promise.all(
+        doctors.map(async doctor => {
+          const userInfo = await User.findById(doctor.userId);
+          return {
+            name: `${userInfo.firstname} ${userInfo.lastname}`,
+            specialization: doctor.specialization
+          };
+        })
+      );
+    }
+
+    res.json({ advice, suggestedDoctors });
+  } catch (error) {
+    console.error("Symptom checker error:", error);
+    res.status(500).json({ 
+      error: "Error analyzing symptoms",
+      advice: language === "hi" ?
+        "मुझे आपके लक्षणों का विश्लेषण करने में समस्या आई। कृपया पुनः प्रयास करें।" :
+        "I had trouble analyzing your symptoms. Please try again."
+    });
+  }
+});
 
 module.exports = router;

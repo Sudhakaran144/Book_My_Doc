@@ -6,68 +6,61 @@ import { NavLink } from "react-router-dom";
 
 const Footer = () => {
   return (
-    <>
-      <footer>
-        <div className="footer">
-          <div className="footer-links">
-            <h3>Links</h3>
-            <ul>
-              <li>
-                <NavLink to={"/"}>Home</NavLink>
-              </li>
-              <li>
-                <NavLink to={"/doctors"}>Doctors</NavLink>
-              </li>
-              <li>
-                <NavLink to={"/appointments"}>Appointments</NavLink>
-              </li>
-              <li>
-                <NavLink to={"/notifications"}>Notifications</NavLink>
-              </li>
-              <li>
-                <HashLink to={"/#contact"}>Contact Us</HashLink>
-              </li>
-              <li>
-                <NavLink to={"/profile"}>Profile</NavLink>
-              </li>
-            </ul>
+    <footer>
+      <div className="footer-container">
+        <div className="footer-top">
+          <div className="footer-logo">
+            <h2>MedSwift</h2>
+            <p>Your health is our priority</p>
           </div>
-          <div className="social">
-            <h3>Social links</h3>
-            <ul>
-              <li className="facebook">
-                <a
-                  href="https://www.facebook.com/"
-                  target={"_blank"}
-                  rel="noreferrer"
-                >
-                  <FaFacebookF />
-                </a>
-              </li>
-              <li className="youtube">
-                <a
-                  href="https://www.youtube.com/"
-                  target={"_blank"}
-                  rel="noreferrer"
-                >
-                  <FaYoutube />
-                </a>
-              </li>
-              <li className="instagram">
-                <a
-                  href="https://www.instagram.com/"
-                  target={"_blank"}
-                  rel="noreferrer"
-                >
-                  <FaInstagram />
-                </a>
-              </li>
-            </ul>
+          
+          <div className="footer-nav">
+            <div className="footer-column">
+              <h3>Quick Links</h3>
+              <ul>
+                <li><NavLink to="/">Home</NavLink></li>
+                <li><NavLink to="/doctors">Doctors</NavLink></li>
+                <li><NavLink to="/appointments">Appointments</NavLink></li>
+              </ul>
+            </div>
+            
+            <div className="footer-column">
+              <h3>Support</h3>
+              <ul>
+                <li><NavLink to="/notifications">Notifications</NavLink></li>
+                <li><NavLink to="/contact">Contact Us</NavLink></li>
+                <li><NavLink to="/profile">Profile</NavLink></li>
+              </ul>
+            </div>
+          </div>
+          
+          <div className="footer-social">
+            <h3>Connect With Us</h3>
+            <div className="social-icons">
+              <a href="#" className="social-icon facebook">
+                <FaFacebookF />
+              </a>
+              <a href="#" className="social-icon instagram">
+                <FaInstagram />
+              </a>
+              <a href="#" className="social-icon youtube">
+                <FaYoutube />
+              </a>
+            </div>
           </div>
         </div>
         
-      </footer>
-    </>
+        <div className="footer-divider"></div>
+        
+        <div className="footer-bottom">
+          <p>&copy; {new Date().getFullYear()} HealthConnect. All rights reserved.</p>
+          <div className="footer-legal">
+            <NavLink to="/privacy">Privacy Policy</NavLink>
+            <NavLink to="/terms">Terms of Service</NavLink>
+          </div>
+        </div>
+      </div>
+    </footer>
   );
 };
 
